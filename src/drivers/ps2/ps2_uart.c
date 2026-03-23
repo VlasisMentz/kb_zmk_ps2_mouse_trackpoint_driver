@@ -276,7 +276,7 @@ int ps2_uart_configure_pin_scl_input() { return ps2_uart_configure_pin_scl((GPIO
 
 int ps2_uart_configure_pin_scl_output() {
     return ps2_uart_configure_pin_scl(
-        GPIO_OUTPUT_HIGH | NRF_GPIO_DRIVE_H0S1,
+        GPIO_OUTPUT_LOW | NRF_GPIO_DRIVE_H0D1,
         "output"
     );
 }
