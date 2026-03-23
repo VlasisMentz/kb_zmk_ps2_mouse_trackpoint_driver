@@ -275,7 +275,7 @@ int ps2_uart_configure_pin_scl(gpio_flags_t flags, char *descr) {
 int ps2_uart_configure_pin_scl_input() { return ps2_uart_configure_pin_scl((GPIO_INPUT), "input"); }
 
 int ps2_uart_configure_pin_scl_output() {
-    return ps2_uart_configure_pin_scl((GPIO_OUTPUT_HIGH), "output");
+    return ps2_uart_configure_pin_scl((GPIO_OUTPUT_HIGH | GPIO_DS_ALT_LOW), "output");
 }
 
 int ps2_uart_configure_pin_sda(gpio_flags_t flags, char *descr) {
