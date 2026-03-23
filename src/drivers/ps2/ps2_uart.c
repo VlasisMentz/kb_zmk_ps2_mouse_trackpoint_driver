@@ -362,7 +362,8 @@ static int ps2_uart_set_mode_write() {
 
     // Configure data and clock lines for output
     ps2_uart_set_scl_callback_enabled(false);
-    ps2_uart_configure_pin_scl_output();
+    int scl_cfg_err = ps2_uart_configure_pin_scl_output();
+    LOG_INF("ps2_uart: configure SCL output ret=%d", scl_cfg_err);
     ps2_uart_configure_pin_sda_output();
 
     return err;
@@ -923,6 +924,7 @@ int ps2_uart_write_byte_start(uint8_t byte) {
 
     // Inhibit the line by setting clock low and data high for 100us
     ps2_uart_set_scl(0);
+    LOG_INF("ps2_uart: SCL after set LOW = %d (expected 0)", ps2_uart_get_scl());
     ps2_uart_set_sda(1);
     k_busy_wait(PS2_UART_TIMING_SCL_INHIBITION);
 
