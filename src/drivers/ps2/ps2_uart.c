@@ -14,7 +14,7 @@
 #include <zephyr/drivers/pinctrl.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
-
+#include <zephyr/dt-bindings/gpio/nordic-nrf-gpio.h>
 #include <hal/nrf_uarte.h>
 
 #define LOG_LEVEL CONFIG_PS2_LOG_LEVEL
@@ -276,7 +276,7 @@ int ps2_uart_configure_pin_scl_input() { return ps2_uart_configure_pin_scl((GPIO
 
 int ps2_uart_configure_pin_scl_output() {
     return ps2_uart_configure_pin_scl(
-        (GPIO_OUTPUT_HIGH | NRF_GPIO_DRIVE_H0H1),
+        GPIO_OUTPUT_HIGH | NRF_GPIO_DRIVE_H0S1,
         "output"
     );
 }
@@ -296,7 +296,10 @@ int ps2_uart_configure_pin_sda(gpio_flags_t flags, char *descr) {
 int ps2_uart_configure_pin_sda_input() { return ps2_uart_configure_pin_sda((GPIO_INPUT), "input"); }
 
 int ps2_uart_configure_pin_sda_output() {
-    return ps2_uart_configure_pin_sda((GPIO_OUTPUT_HIGH), "output");
+    return ps2_uart_configure_pin_sda(
+        GPIO_OUTPUT_HIGH | NRF_GPIO_DRIVE_H0S1,
+        "output"
+    );
 }
 
 int ps2_uart_set_scl_callback_enabled(bool enabled) {
