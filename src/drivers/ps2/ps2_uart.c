@@ -275,7 +275,7 @@ int ps2_uart_configure_pin_scl(gpio_flags_t flags, char *descr) {
 int ps2_uart_configure_pin_scl_input() { return ps2_uart_configure_pin_scl((GPIO_INPUT), "input"); }
 
 int ps2_uart_configure_pin_scl_output() {
-    return ps2_uart_configure_pin_scl((GPIO_OUTPUT_HIGH | NRF_GPIO_DRIVE_H0H1), "output");
+    return ps2_uart_configure_pin_scl((GPIO_OUTPUT_HIGH), "output");
 }
 
 int ps2_uart_configure_pin_sda(gpio_flags_t flags, char *descr) {
@@ -347,24 +347,32 @@ static int ps2_uart_set_mode_write() {
     const struct ps2_uart_config *config = &ps2_uart_config;
     int err;
 
-    // Set pincntrl with unused pins so that we can control the pins
-    // through GPIO
+    // Set pinctrl with unused pins so that we can control the pins through GPIO
     err = pinctrl_apply_state(config->pcfg, PINCTRL_STATE_SLEEP);
     if (err < 0) {
         LOG_ERR("Could not switch pinctrl state to OFF: %d", err);
         return err;
     }
 
+    LOG_INF("ps2_uart: after PINCTRL_STATE_SLEEP, SCL=%d", ps2_uart_get_scl());
+    k_busy_wait(50);
+
     // Disable UART interrupt
-    // Unintuitively, this has to be done AFTER applying the pincntrl state,
+    // Unintuitively, this has to be done AFTER applying the pinctrl state,
     // otherwise GPIO won't be able to use the data pin
     uart_irq_rx_disable(config->uart_dev);
 
     // Configure data and clock lines for output
     ps2_uart_set_scl_callback_enabled(false);
+
     int scl_cfg_err = ps2_uart_configure_pin_scl_output();
-    LOG_INF("ps2_uart: configure SCL output ret=%d", scl_cfg_err);
-    ps2_uart_configure_pin_sda_output();
+    LOG_INF("ps2_uart: configure SCL output ret=%d, SCL now=%d",
+            scl_cfg_err, ps2_uart_get_scl());
+    k_busy_wait(50);
+
+    int sda_cfg_err = ps2_uart_configure_pin_sda_output();
+    LOG_INF("ps2_uart: configure SDA output ret=%d, SDA now=%d",
+            sda_cfg_err, ps2_uart_get_sda());
 
     return err;
 }
@@ -922,10 +930,13 @@ int ps2_uart_write_byte_start(uint8_t byte) {
     data->cur_write_byte = byte;
     data->cur_write_pos = PS2_UART_POS_START;
 
-    // Inhibit the line by setting clock low and data high for 100us
+    // Inhibit the line by setting clock low and data high
     ps2_uart_set_scl(0);
     LOG_INF("ps2_uart: SCL after set LOW = %d (expected 0)", ps2_uart_get_scl());
+
     ps2_uart_set_sda(1);
+    LOG_INF("ps2_uart: SDA after set HIGH = %d (expected 1)", ps2_uart_get_sda());
+
     k_busy_wait(PS2_UART_TIMING_SCL_INHIBITION);
 
     // Set data to value of start bit
@@ -937,11 +948,15 @@ int ps2_uart_write_byte_start(uint8_t byte) {
     // data bit.
     data->cur_write_pos += 1;
 
-    // Release the clock line and configure it as input
-    // This let's the device take control of the clock again
+     // Release the clock line and configure it as input
+    // This lets the device take control of the clock again
     ps2_uart_set_scl(1);
-    ps2_uart_configure_pin_scl_input();
+    LOG_INF("ps2_uart: SCL after set HIGH = %d (expected 1)", ps2_uart_get_scl());
 
+    int scl_in_err = ps2_uart_configure_pin_scl_input();
+    LOG_INF("ps2_uart: configure SCL input ret=%d, SCL now=%d",
+            scl_in_err, ps2_uart_get_scl());
+    
     // We need to wait for the first SCL clock
     // Execution continues once it arrives in
     // `ps2_uart_write_scl_interrupt_handler`
