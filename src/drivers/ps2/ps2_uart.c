@@ -914,7 +914,6 @@ int ps2_uart_write_byte_start(uint8_t byte) {
     err = k_sem_take(&data->write_lock, K_NO_WAIT);
     if (err != 0 && err != -EBUSY) {
         LOG_ERR("ps2_uart_write_byte_start could not take semaphore: %d", err);
-
         return err;
     }
 
@@ -924,51 +923,20 @@ int ps2_uart_write_byte_start(uint8_t byte) {
         return err;
     }
 
-    // Set the write byte so it can be used in
-    // the downstream write function that is called
-    // from the SCL interrupt
+    // Keep these in case anything else expects them
     data->cur_write_byte = byte;
     data->cur_write_pos = PS2_UART_POS_START;
 
-    // Inhibit the line by setting clock low and data high
+    // TEMP TEST: hold SCL low/high long enough for a multimeter
     ps2_uart_set_scl(0);
-    LOG_INF("ps2_uart: SCL after set LOW = %d (expected 0)", ps2_uart_get_scl());
+    LOG_INF("ps2_uart: LONG TEST SCL low readback = %d", ps2_uart_get_scl());
+    k_sleep(K_MSEC(200));
 
-    ps2_uart_set_sda(1);
-    LOG_INF("ps2_uart: SDA after set HIGH = %d (expected 1)", ps2_uart_get_sda());
-
-    k_busy_wait(PS2_UART_TIMING_SCL_INHIBITION);
-
-    // Set data to value of start bit
-    ps2_uart_set_sda(0);
-    k_busy_wait(PS2_UART_TIMING_SCL_INHIBITION);
-
-    // The start bit was sent by setting sda to low
-    // So the next scl interrupt will be for the first
-    // data bit.
-    data->cur_write_pos += 1;
-
-     // Release the clock line and configure it as input
-    // This lets the device take control of the clock again
     ps2_uart_set_scl(1);
-    LOG_INF("ps2_uart: SCL after set HIGH = %d (expected 1)", ps2_uart_get_scl());
-
-    int scl_in_err = ps2_uart_configure_pin_scl_input();
-    LOG_INF("ps2_uart: configure SCL input ret=%d, SCL now=%d",
-            scl_in_err, ps2_uart_get_scl());
-    
-    // We need to wait for the first SCL clock
-    // Execution continues once it arrives in
-    // `ps2_uart_write_scl_interrupt_handler`
-    ps2_uart_set_scl_callback_enabled(true);
-
-    // And if the PS/2 device doesn't start the clock, we want to
-    // handle that error...
-    k_work_schedule_for_queue(&ps2_uart_work_queue, &data->write_scl_timout,
-                              PS2_UART_TIMEOUT_WRITE_SCL_START);
+    LOG_INF("ps2_uart: LONG TEST SCL high readback = %d", ps2_uart_get_scl());
+    k_sleep(K_MSEC(200));
 
     k_mutex_unlock(&ps2_uart_write_mutex);
-
     return 0;
 }
 
